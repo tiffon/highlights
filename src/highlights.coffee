@@ -65,31 +65,74 @@ class Highlights
   # Returns a String of HTML. The HTML will contains one <pre> with one <div>
   # per line and each line will contain one or more <span> elements for the
   # tokens in the line.
-  highlightSync: ({filePath, fileContents, scopeName}={}) ->
+  highlightSync: ({filePath,
+                   fileContents,
+                   scopeName,
+                   startingLineNum,
+                   idHandle}={}) ->
     @loadGrammarsSync()
 
     fileContents ?= fs.readFileSync(filePath, 'utf8') if filePath
     grammar = @registry.grammarForScopeName(scopeName)
     grammar ?= @registry.selectGrammar(filePath, fileContents)
     lineTokens = grammar.tokenizeLines(fileContents)
+    if startingLineNum
+      useLineNums = true
+      lineNum = startingLineNum
+      useNumAnchor = !!idHandle
+    else
+      useLineNums = false
+      lineNum = NaN
 
+    console.log('useline numes:', useLineNums, lineNum)
     # Remove trailing newline
     if lineTokens.length > 0
       lastLineTokens = lineTokens[lineTokens.length - 1]
       if lastLineTokens.length is 1 and lastLineTokens[0].value is ''
         lineTokens.pop()
 
-    html = '<pre class="editor editor-colors">'
+    html = '<pre class="editor editor-colors'
+    if useLineNums
+      html += ' with-line-numbers">'
+      html += '<table><tbody>'
+      trCssClasses = 'highlight-numbered-line'
+      if useNumAnchor
+        trCssClasses += ' code-is-anchored'
+      else
+    else
+      html += ' without-line-numbers">'
+
     for tokens in lineTokens
       scopeStack = []
-      html += '<div class="line">'
+      if useLineNums
+        html += """
+          <tr class="#{ trCssClasses }">
+            <td class="highlight-line-num" data-line-num="#{ lineNum }">"""
+        if useNumAnchor
+          html += """
+            <a  class="code-anchor"
+                id="code-#{ idHandle }-#{ lineNum }"
+                href="#code-#{ idHandle }-#{ lineNum }">
+            </a>"""
+        html += """
+          </td>
+          <td class="highlight-line">"""
+      else
+        html += '<div class="highlight-line">'
       for {scopes, value} in tokens
         value = ' ' unless value
         html = @updateScopeStack(scopeStack, scopes, html)
         html += "<span>#{@escapeString(value)}</span>"
       html = @popScope(scopeStack, html) while scopeStack.length > 0
-      html += '</div>'
+      if useLineNums
+        html += '</td></tr>'
+        lineNum++
+      else
+        html += '</div>'
+    if useLineNums
+      html += '</tbody></table>'
     html += '</pre>'
+    # consoel.log('result:', html);
     html
 
   escapeString: (string) ->
