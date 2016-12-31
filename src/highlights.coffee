@@ -3,6 +3,9 @@ _ = require 'underscore-plus'
 fs = require 'fs-plus'
 CSON = require 'season'
 {GrammarRegistry} = require 'first-mate'
+Selector = require 'first-mate-select-grammar'
+selector = Selector()
+
 
 module.exports =
 class Highlights
@@ -69,20 +72,27 @@ class Highlights
                    fileContents,
                    scopeName,
                    startingLineNum,
+                   lineEm,
                    idHandle}={}) ->
     @loadGrammarsSync()
 
     fileContents ?= fs.readFileSync(filePath, 'utf8') if filePath
     grammar = @registry.grammarForScopeName(scopeName)
-    grammar ?= @registry.selectGrammar(filePath, fileContents)
+    # grammar ?= @registry.selectGrammar(filePath, fileContents)
+    grammar ?= selector.selectGrammar(@registry, filePath, fileContents)
     lineTokens = grammar.tokenizeLines(fileContents)
     if startingLineNum
       useLineNums = true
       lineNum = startingLineNum
       useNumAnchor = !!idHandle
+      if lineEm
+        lineEm = lineEm.split(',')
+      else
+        lineEm = []
     else
       useLineNums = false
       lineNum = NaN
+      lineEm = []
 
     console.log('useline numes:', useLineNums, lineNum)
     # Remove trailing newline
@@ -90,7 +100,7 @@ class Highlights
       lastLineTokens = lineTokens[lineTokens.length - 1]
       if lastLineTokens.length is 1 and lastLineTokens[0].value is ''
         lineTokens.pop()
-
+    console.log('lineEm:', lineEm)
     html = '<pre class="editor editor-colors'
     if useLineNums
       html += ' with-line-numbers">'
@@ -98,15 +108,18 @@ class Highlights
       trCssClasses = 'highlight-numbered-line'
       if useNumAnchor
         trCssClasses += ' code-is-anchored'
-      else
     else
       html += ' without-line-numbers">'
 
     for tokens in lineTokens
       scopeStack = []
       if useLineNums
+        if lineEm.indexOf('' + lineNum) > -1
+          lineEmClass = "line-em"
+        else
+          lineEmClass = ""
         html += """
-          <tr class="#{ trCssClasses }">
+          <tr class="#{ trCssClasses } #{ lineEmClass }">
             <td class="highlight-line-num" data-line-num="#{ lineNum }">"""
         if useNumAnchor
           html += """

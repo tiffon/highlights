@@ -1,3 +1,4 @@
+
 [submodule "deps/language-c"]
 	path = deps/language-c
 	url = https://github.com/atom/language-c
@@ -85,3 +86,6 @@
 [submodule "deps/language-clojure"]
 	path = deps/language-clojure
 	url = https://github.com/atom/language-clojure
+[submodule "deps/language-babel"]
+	path = deps/language-babel
+	url = https://github.com/gandm/language-babel.git
